@@ -9,8 +9,6 @@
 #include <Eigen/Dense>
 #include <fstream>
 #include<random>
-#include "mnist/mnist_reader.hpp"
-#include "mnist/mnist_utils.hpp"
 // #include "matplotlibcpp.h"
 #include <cmath>
 #include <sstream>
