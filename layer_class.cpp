@@ -195,6 +195,61 @@ class ReLU: public Layer{
 			return elementwise(grad_output,relu_grad);
 		}
 };
+MatrixXf compute_sigmoid (MatrixXf input){
+	MatrixXf result(input.rows(),input.cols());
+		for(int i=0;i<input.rows();i++){
+			for(int j=0;j<input.cols();j++){
+				double temp = input(i,j);
+				result(i,j) = (1 / (1 + exp(- temp)));
+				}
+			}
+		return result;
+}
+
+class Sigmoid: public layer{
+
+	public:
+			
+			MatrixXf forward(MatrixXf input){
+				MatrixXf sigmoid_forward=compute_sigmoid(input);
+				return sigmoid_forward;
+			}
+			MatrixXf backward(MatrixXf input, MatrixXf grad_output){
+				MatrixXf y=compute_sigmoid(input);
+				MatrixXf result(y.rows(),y.cols());
+				for(int i=0;i<y.rows();i++){
+					for(int j=0;j<y.cols();j++){
+					double temp = y(i,j);
+					result(i,j) = y*(1-y);
+					}
+					}
+				return elementwise(grad_output,result);
+			}
+};
+class my_tanh : public Layer{
+	public:
+			MatrixXf forward(MatrixXf input){
+				MatrixXf result(input.rows(),input.cols());
+			for(int i=0;i<input.rows();i++){
+			for(int j=0;j<input.cols();j++){
+				double temp = input(i,j);
+				result(i,j) = tanh(temp);
+				}
+			}
+				return result;
+			}
+			MatrixXf backward(MatrixXf input, MatrixXf grad_output){
+				
+				MatrixXf result(input.rows(),input.cols());
+				for(int i=0;i<input.rows();i++){
+					for(int j=0;j<input.cols();j++){
+					double temp = input(i,j);
+					result(i,j) = 1-(tanh(temp)*tanh(temp));
+					}
+				}
+				return elementwise(grad_output,result);
+			}
+};
 
 VectorXf softmax_crossentropy_with_logits(MatrixXf logits, VectorXf reference_answers){
 	VectorXf xentropy(logits.rows());
