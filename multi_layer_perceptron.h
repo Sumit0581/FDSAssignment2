@@ -1,6 +1,5 @@
 /* Defines a generalised feedforward neural network*/
 
-#define _USE_MATH_DEFINES
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -156,6 +155,82 @@ MatrixXf extend(MatrixXf a,int size){
 	return result;
 }
 
+MatrixXf compute_sigmoid (MatrixXf input){
+	/*
+	 Computes sigmoid of the matrix.
+	*/
+	MatrixXf result(input.rows(),input.cols());
+		for(int i=0;i<input.rows();i++){
+			for(int j=0;j<input.cols();j++){
+				double temp = input(i,j);
+				result(i,j) = (1.0 / (1.0 + exp(-1.0 * temp)));
+				}
+			}
+		return result;
+}
+
+VectorXf softmax_crossentropy_with_logits(MatrixXf logits, VectorXf reference_answers){
+	/*
+	 Computes softmax crossentropy.
+	*/
+	VectorXf xentropy(logits.rows());
+	for(int i=0;i<logits.rows();i++){
+		double result = 0;
+		for (int j=0;j<logits.cols();j++){
+			result += exp(logits(i,j));
+		}
+		result = log(result);
+		xentropy(i) = -1.0*logits(i,reference_answers(i)) + result; 
+	}
+	return xentropy;
+}
+
+MatrixXf grad_softmax_crossentropy_with_logits(MatrixXf logits, VectorXf reference_answers){
+	/*
+	 Computes gradient of softmax crossentropy.
+	*/
+	MatrixXf ones_for_answers = zeroes_like(logits,reference_answers);
+	MatrixXf softmax(logits.rows(),logits.cols());
+
+	for(int i=0;i<softmax.rows();i++){
+		double result = 0;
+		for(int j=0;j<softmax.cols();j++){
+			softmax(i,j) = exp(logits(i,j));
+			result += softmax(i,j);
+		}
+		for(int j=0;j<softmax.cols();j++){
+			softmax(i,j) /= result;
+		}
+	}
+
+	return (ones_for_answers + softmax)/logits.rows(); 
+}
+
+VectorXf row_max(MatrixXf logits){
+	/*
+	 Calculates row maximum vector for the matrix.
+	*/
+	VectorXf result(logits.rows());
+	for(int i = 0; i<logits.rows();i++){
+		int max = 0;
+		for(int j = 0;j < logits.cols();j++){
+			if(logits(i,j)>max) max = j;
+		}
+		result(i) = max;
+	}
+	return result;
+}
+
+vector<int> random_permutation(int n){
+	/*
+	 Generates random permutation of integers from 0 to n.
+	*/
+	vector<int> result;
+	for(int i=0;i<n;i++) result.push_back(i);
+	random_shuffle(result.begin(),result.end());
+	return result;
+}
+
 class Layer{
 	/*
 	 Layer object.
@@ -219,20 +294,6 @@ class ReLU: public Layer{
 		}
 };
 
-MatrixXf compute_sigmoid (MatrixXf input){
-	/*
-	 Computes sigmoid of the matrix.
-	*/
-	MatrixXf result(input.rows(),input.cols());
-		for(int i=0;i<input.rows();i++){
-			for(int j=0;j<input.cols();j++){
-				double temp = input(i,j);
-				result(i,j) = (1.0 / (1.0 + exp(-1.0 * temp)));
-				}
-			}
-		return result;
-}
-
 class Sigmoid: public Layer{
 	/*
 	 Logistic Layer object.
@@ -285,43 +346,6 @@ class Tanh: public Layer{
 		}
 };
 
-VectorXf softmax_crossentropy_with_logits(MatrixXf logits, VectorXf reference_answers){
-	/*
-	 Computes softmax crossentropy.
-	*/
-	VectorXf xentropy(logits.rows());
-	for(int i=0;i<logits.rows();i++){
-		double result = 0;
-		for (int j=0;j<logits.cols();j++){
-			result += exp(logits(i,j));
-		}
-		result = log(result);
-		xentropy(i) = -1.0*logits(i,reference_answers(i)) + result; 
-	}
-	return xentropy;
-}
-
-MatrixXf grad_softmax_crossentropy_with_logits(MatrixXf logits, VectorXf reference_answers){
-	/*
-	 Computes gradient of softmax crossentropy.
-	*/
-	MatrixXf ones_for_answers = zeroes_like(logits,reference_answers);
-	MatrixXf softmax(logits.rows(),logits.cols());
-
-	for(int i=0;i<softmax.rows();i++){
-		double result = 0;
-		for(int j=0;j<softmax.cols();j++){
-			softmax(i,j) = exp(logits(i,j));
-			result += softmax(i,j);
-		}
-		for(int j=0;j<softmax.cols();j++){
-			softmax(i,j) /= result;
-		}
-	}
-
-	return (ones_for_answers + softmax)/logits.rows(); 
-}
-
 vector<MatrixXf> forward(vector<Layer *> network, MatrixXf X){
 	/*
 	 Forward propagation of the neural network.
@@ -333,21 +357,6 @@ vector<MatrixXf> forward(vector<Layer *> network, MatrixXf X){
 		input = activations[activations.size()-1];
 	}
 	return activations;
-}
-
-VectorXf row_max(MatrixXf logits){
-	/*
-	 Calculates row maximum vector for the matrix.
-	*/
-	VectorXf result(logits.rows());
-	for(int i = 0; i<logits.rows();i++){
-		int max = 0;
-		for(int j = 0;j < logits.cols();j++){
-			if(logits(i,j)>max) max = j;
-		}
-		result(i) = max;
-	}
-	return result;
 }
 
 VectorXf predict(vector<Layer *> network, MatrixXf X){
@@ -382,16 +391,6 @@ double train(vector<Layer *> network, MatrixXf X, VectorXf y){
 
 }
 
-vector<int> random_permutation(int n){
-	/*
-	 Generates random permutation of integers from 0 to n.
-	*/
-	vector<int> result;
-	for(int i=0;i<n;i++) result.push_back(i);
-	random_shuffle(result.begin(),result.end());
-	return result;
-}
-
 vector<Batch> iterate_minibatches(MatrixXf inputs, VectorXf targets, int batchsize){
 	/*
 	 Divides given data into minibatches of given batchsize.
@@ -417,163 +416,21 @@ vector<Batch> iterate_minibatches(MatrixXf inputs, VectorXf targets, int batchsi
 	return result;
 }
 
-
-
-int main(){
-	cout << "Welcome to the Neural Network C++ code" << endl;
-	cout << "You need to give the following data as input." << endl;
-	cout << "1. Training Dataset: csv file containing training data (eg: mnist_train_min.csv)." <<endl;
-	cout << "2. Test Dataset: csv file containing training data (eg: mnist_test_min.csv)." <<endl;
-	cout << "3. Input units: Number of input data neurons (eg: 784 for MNIST data)." <<endl;
-	cout << "4. Output units: Number of output data neurons (eg: 10 for MNIST data)." <<endl;
-	cout << "5. Hidden layers count: Number of hidden layers." <<endl;
-	cout << "6. Hidden Layer Topology: Number of neurons in each hidden layer." <<endl;
-	cout << "7. Activation function: 1 for RelU, 2 for Logistic, 3 for Tanh." <<endl;
-	cout << "*****************************************************************" <<endl;
-	cout << endl;
-
-	srand(time(0));
-	string train_file, test_file;
-	int inputsize, outputsize, hiddenlayercount,activationmode;
-	cout << "Enter the name of training dataset: ";
-	getline(cin,train_file) ;
-	if(train_file.empty()){
-		train_file.assign("mnist_train_min.csv");
-		cout << "Training dataset is " << train_file <<endl;
-	} 
-	cout << "Enter the name of testing dataset: ";
-	getline(cin,test_file);
-	if(test_file.empty()){
-		test_file.assign("mnist_test_min.csv");
-		cout << "Testing dataset is " << test_file <<endl;
-	} 
-
-	cout << "Enter the number of input units: ";
-	cin >> inputsize;
-
-	cout << "Enter the number of output units: ";
-	cin >> outputsize;
-
-	cout << "Enter the number of hidden layers: ";
-	cin >> hiddenlayercount;
-
-	vector<int> topology(hiddenlayercount);
-	cout << "Enter number of neurons in each hidden layer (separated by space):" <<endl;
-	for(int i=0;i<hiddenlayercount;i++){
-		cin >> topology[i];
+vector<Layer *> build_network(int inputsize, int outputsize, int hiddenlayercount, vector<int> topology, int activationmode){
+	// Builds the multilayer perceptron.
+	vector<Layer *> network;
+	// Define network
+	network.push_back(new DenseLayer(inputsize,topology[0]));
+	if(activationmode==1) network.push_back(new ReLU());
+	else if(activationmode==2) network.push_back(new Sigmoid());
+	else network.push_back(new Tanh());
+	network.push_back(new Tanh());
+	for(int i=0;i<hiddenlayercount-1;i++){
+		network.push_back(new DenseLayer(topology[i],topology[i+1]));
+		if(activationmode==1) network.push_back(new ReLU());
+		else if(activationmode==2) network.push_back(new Sigmoid());
+		else network.push_back(new Tanh());
 	}
-
-	cout << "Enter the type of activation you want \n 1. RelU \n 2. Logistics Sigmoid \n 3. Tanh \n";
-	cin >> activationmode;
-
-	// Load training data
-	ifstream trainFileRows(train_file);
-	string lines;
-	int rows=0;
-	while(getline(trainFileRows,lines)){
-		rows++;
-	}
-
-	ifstream trainFile(train_file);
-	string line;
-	vector<vector<string>> values;
-	MatrixXf train_input(rows-1,inputsize);
-	VectorXf train_output(rows-1);
-	int row = 0 ;
-	while(getline(trainFile,line)){
-		string line_value;
-		vector<string> line_values;
-		stringstream ss(line);
-		int col = 0;
-		if(row==0){
-			row++;
-			continue;
-		}
-		while(getline(ss,line_value,',')){
-			line_values.push_back(line_value);
-			if(col==0) train_output(row-1) = stof(line_value);
-			else train_input(row-1,col-1) = stoi(line_value)/255.0;
-			col++;
-		}
-		row++;
-		values.emplace_back(line_values);
-	}
-
-	// Load test data
-	ifstream testFileRows(test_file);
-	rows=0;
-	while(getline(testFileRows,lines)){
-		rows++;
-	}
-
-	ifstream testFile(test_file);
-	MatrixXf test_input(rows-1,inputsize);
-	VectorXf test_output(rows-1);
-	row = 0 ;
-	while(getline(testFile,line)){
-		string line_value;
-		vector<string> line_values;
-		stringstream ss(line);
-		int col = 0;
-		if(row==0){
-			row++;
-			continue;
-		}
-		while(getline(ss,line_value,',')){
-			// cout << line_value << endl;
-			line_values.push_back(line_value);
-			if(col==0) test_output(row-1) = stof(line_value);
-			else test_input(row-1,col-1) = stoi(line_value)/255.0;
-			col++;
-		}
-		row++;
-		values.emplace_back(line_values);
-	}
-
-    cout << "Nbr of training images = " << train_input.rows() << endl;
-    cout << "Nbr of training labels = " << train_output.rows() << endl;
-    cout << "Nbr of test images = " << test_input.rows() << endl;
-    cout << "Nbr of test labels = " << test_output.rows() << endl;
-    
-    vector<double> train_log;
-    vector<double> val_log;
-    vector<Layer *> network;
-    
-    // Define network
-
-    network.push_back(new DenseLayer(inputsize,topology[0]));
-    if(activationmode==1) network.push_back(new ReLU());
-    else if(activationmode==2) network.push_back(new Sigmoid());
-    else network.push_back(new Tanh());
-    network.push_back(new Tanh());
-    for(int i=0;i<hiddenlayercount-1;i++){
-    	network.push_back(new DenseLayer(topology[i],topology[i+1]));
-    	if(activationmode==1) network.push_back(new ReLU());
-    	else if(activationmode==2) network.push_back(new Sigmoid());
-    	else network.push_back(new Tanh());
-    }
-    network.push_back(new DenseLayer(topology[hiddenlayercount-1],outputsize));
-    
-    // Training model
-    for(int epoch = 0; epoch<25;epoch++){
-    	vector<Batch> batch = iterate_minibatches(train_input,train_output,32);
-    	for(int i=0;i<batch.size();i++){
-    		train(network,batch[i].inputs,batch[i].targets);
-    	}
-    	VectorXf train_pred = predict(network,train_input);
-    	double train_accuracy =0;
-    	for(int i=0;i<train_pred.rows();i++){
-    		if(train_pred(i)==train_output(i)) train_accuracy+=1;
-    	}
-    	train_accuracy /= train_pred.rows();
-    	VectorXf test_pred = predict(network,test_input);
-    	double test_accuracy =0;
-    	for(int i=0;i<test_pred.rows();i++){
-    		if(test_pred(i)==test_output(i)) test_accuracy+=1;
-    	}
-    	test_accuracy /= test_pred.rows();
-    	cout << "Epoch: " << epoch+1 << " Training accuracy: " << train_accuracy << " Validation accuracy: " << test_accuracy << endl;
-    }
-
-    return 0;
+	network.push_back(new DenseLayer(topology[hiddenlayercount-1],outputsize));
+	return network;
 }
